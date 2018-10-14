@@ -10,6 +10,7 @@ using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.OAuth;
 using AspNetBearerIdentity.Models;
+using static AspNetBearerIdentity.ApplicationUserManager;
 
 namespace AspNetBearerIdentity.Providers
 {
@@ -30,6 +31,21 @@ namespace AspNetBearerIdentity.Providers
         public override async Task GrantResourceOwnerCredentials(OAuthGrantResourceOwnerCredentialsContext context)
         {
             var userManager = context.OwinContext.GetUserManager<ApplicationUserManager>();
+
+
+            //adding lockout to the bearer
+            var signInManager = context.OwinContext.GetUserManager<ApplicationSignInManager>();
+            var result = await signInManager.PasswordSignInAsync(context.UserName, context.Password, false , shouldLockout: true);
+            switch (result)
+            {
+                case SignInStatus.LockedOut:
+                    context.SetError("invalid_grant", "The user has been locked out");
+                    return;
+                case SignInStatus.Failure:
+                    context.SetError("invalid_grant", "The user name or password is incorrect.");
+                    return;
+            }
+
 
             ApplicationUser user = await userManager.FindAsync(context.UserName, context.Password);
 
